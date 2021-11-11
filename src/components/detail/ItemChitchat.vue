@@ -40,42 +40,51 @@
 </template>
 
 <script lang="ts">
-import { Component, Vue, Prop, Emit, Watch } from 'vue-property-decorator';
+import { defineComponent, PropType, ref } from "vue";
 import { EMPTY_STRING } from '@/core/helpers/string-helpers';
 import { PtComment, PtUser } from '@/core/models/domain';
 import { PtNewComment } from '@/shared/models/dto/pt-new-comment';
 
-@Component
-export default class PtItemChitchat extends Vue {
-    @Prop() public comments!: PtComment[];
-    @Prop() public currentUser!: PtUser;
+export default defineComponent({
+  name: "PtItemChitchat",
+  props: {
+    comments: Array as PropType<PtComment[]>,
+    currentUser: Object as PropType<PtUser>,
+  },
+  setup() {
+    const newCommentText = ref(EMPTY_STRING);
+    const addNewComment = (newComment: PtNewComment) => {
+      console.log("add new comment" + newComment);
+    };
 
-    public newCommentText = EMPTY_STRING;
-    @Emit('addNewComment')
-    public addNewComment(newComment: PtNewComment) {}
+    const onAddTapped = () => {
+      const newTitle = newCommentText.value.trim();
+      if (newTitle.length === 0) {
+        return;
+      }
+      const newComment: PtNewComment = {
+        title: newTitle,
+      };
+      addNewComment(newComment);
 
-    public onAddTapped() {
-        const newTitle = this.newCommentText.trim();
-        if (newTitle.length === 0) {
-            return;
-        }
-        const newComment: PtNewComment = {
-            title: newTitle,
-        };
-        this.addNewComment(newComment);
+      newCommentText.value = EMPTY_STRING;
+    };
 
-        this.newCommentText = EMPTY_STRING;
-    }
-}
+    return {
+      newCommentText,
+      onAddTapped,
+    };
+  }
+});
 </script>
 
 <style scoped>
 .chitchat-item {
-    margin-top: 20px;
+  margin-top: 20px;
 }
 
 .chitchat-text {
-    color: #495057;
-    font-size: 0.9em;
+  color: #495057;
+  font-size: 0.9em;
 }
 </style>

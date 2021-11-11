@@ -1,25 +1,25 @@
-import { Store } from '@/core/state/app-store';
-import { BacklogRepository } from '@/repositories/backlog-repository';
+import { Store } from "@/core/state/app-store";
+import { BacklogRepository } from "@/repositories/backlog-repository";
 
-import { PtItem, PtUser, PtTask, PtComment } from '@/core/models/domain';
+import { PtItem, PtUser, PtTask, PtComment } from "@/core/models/domain";
 
-import { PriorityEnum, StatusEnum } from '@/core/models/domain/enums';
-import { getUserAvatarUrl } from '@/core/helpers/user-avatar-helper';
+import { PriorityEnum, StatusEnum } from "@/core/models/domain/enums";
+import { getUserAvatarUrl } from "@/core/helpers/user-avatar-helper";
 
 
-import { CONFIG } from '@/config';
-import { PresetType } from '@/core/models/domain/types';
-import { datesForTask, datesForPtItem, datesForComment } from '@/core/helpers/date-utils';
-import { PtNewItem } from '@/shared/models/dto/pt-new-item';
-import { PtNewTask } from '@/shared/models/dto/pt-new-task';
-import { PtNewComment } from '@/shared/models/dto/pt-new-comment';
+import { CONFIG } from "@/config";
+import { PresetType } from "@/core/models/domain/types";
+import { datesForTask, datesForPtItem, datesForComment } from "@/core/helpers/date-utils";
+import { PtNewItem } from "@/shared/models/dto/pt-new-item";
+import { PtNewTask } from "@/shared/models/dto/pt-new-task";
+import { PtNewComment } from "@/shared/models/dto/pt-new-comment";
 
 
 export const tempCurrentUser = {
     avatar: getUserAvatarUrl(CONFIG.apiEndpoint, 21),
     dateCreated: new Date(),
     dateModified: new Date(),
-    fullName: 'Alex Ziskind',
+    fullName: "Alex Ziskind",
     id: 21,
 };
 

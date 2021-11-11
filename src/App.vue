@@ -15,25 +15,18 @@
 </template>
 
 <script lang="ts">
-import { Component, Vue } from 'vue-property-decorator';
 import SideMenu from '@/components/SideMenu.vue';
 import MainMenu from '@/components/MainMenu.vue';
 
-/*
-Component.registerHooks([
-  "beforeRouteEnter",
-  "beforeRouteLeave",
-  "beforeRouteUpdate"
-]);
-*/
+import { defineComponent } from "vue";
 
-@Component({
-    components: {
-        MainMenu,
-        SideMenu,
-    },
-})
-export default class App extends Vue {}
+export default defineComponent({
+  name: "App",
+  components: {
+    MainMenu,
+    SideMenu,
+  },
+});
 </script>
 
 <style>

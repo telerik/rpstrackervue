@@ -17,15 +17,20 @@
     >Done Items</button>
   </div>
 </template>
-
 <script lang="ts">
-import { Component, Prop, Vue } from 'vue-property-decorator';
-import { PresetType } from '@/core/models/domain/types';
+import { defineComponent } from "vue";
+import { PresetType } from "@/core/models/domain/types";
 
-@Component
-export default class PresetFilter extends Vue {
-  public onSelectPresetTap(preset: PresetType) {
-    this.$emit('onPresetSelected', preset);
-  }
-}
+export default defineComponent({
+  name: "PresetFilter",
+  setup(_props, context) {
+    const onSelectPresetTap = (preset: PresetType) => {
+      context.emit("onPresetSelected", preset);
+    };
+
+    return {
+      onSelectPresetTap,
+    };
+  },
+});
 </script>

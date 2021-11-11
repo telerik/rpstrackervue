@@ -7,8 +7,8 @@
         <h2>
           <span class="small text-uppercase text-muted d-block">Statistics</span>
           <span
-            v-if="this.filter.dateStart && this.filter.dateEnd"
-          >{{formatDateEnUs(this.filter.dateStart)}} - {{formatDateEnUs(this.filter.dateEnd)}}</span>
+            v-if="filter.dateStart && filter.dateEnd"
+          >{{formatDateEnUs(filter.dateStart)}} - {{formatDateEnUs(filter.dateEnd)}}</span>
         </h2>
       </div>
 
@@ -49,81 +49,86 @@
 </template>
 
 <script lang="ts">
-import { Component, Vue } from 'vue-property-decorator';
-
 import {
-    DashboardRepository,
-    DashboardFilter,
-    FilteredIssues,
-} from '@/repositories/dashboard-repository';
-import { DashboardService } from '@/services/dashboard-service';
+  DashboardRepository,
+  DashboardFilter,
+  FilteredIssues,
+} from "@/repositories/dashboard-repository";
+import { DashboardService } from "@/services/dashboard-service";
 import {
     TypeCounts,
     PriorityCounts,
     StatusCounts,
-} from '@/shared/models/ui/stats';
-import { formatDateEnUs } from '@/core/helpers/date-utils';
-import ActiveIssues from '@/components/dashboard/ActiveIssues.vue';
+} from "@/shared/models/ui/stats";
+import { formatDateEnUs } from "@/core/helpers/date-utils";
+import ActiveIssues from "@/components/dashboard/ActiveIssues.vue";
 
 interface DateRange {
-    dateStart: Date;
-    dateEnd: Date;
+  dateStart: Date;
+  dateEnd: Date;
 }
 
-@Component({
-    components: {
-        ActiveIssues,
-    },
-})
-export default class DashboardPage extends Vue {
-    public filter: DashboardFilter = {};
-    public statusCounts: StatusCounts = {
-        activeItemsCount: 0,
-        closeRate: 0,
-        closedItemsCount: 0,
-        openItemsCount: 0,
-    };
-    public categories: Date[] = [];
-    public itemsOpenByMonth: number[] = [];
-    public itemsClosedByMonth: number[] = [];
+import { defineComponent, ref } from "vue";
 
-    private dashboardRepo: DashboardRepository = new DashboardRepository();
-    private dashboardService: DashboardService = new DashboardService(
-        this.dashboardRepo
+export default defineComponent({
+  name: "DashboardPage",
+  components: {
+    ActiveIssues,
+  },
+  setup() {
+    const filter = ref<DashboardFilter>({});
+    const statusCounts = ref<StatusCounts>({
+      activeItemsCount: 0,
+      closeRate: 0,
+      closedItemsCount: 0,
+      openItemsCount: 0,
+    });
+    const categories = ref<Date[]>([]);
+    const itemsOpenByMonth = ref<number[]>([]);
+    const itemsClosedByMonth = ref<number[]>([]);
+
+    const dashboardRepo: DashboardRepository = new DashboardRepository();
+    const dashboardService: DashboardService = new DashboardService(
+      dashboardRepo
     );
 
-    public created() {
-        this.refresh();
-    }
+    const refresh = () => {
+      dashboardService.getStatusCounts(filter.value as DashboardFilter).then((result) => {
+        statusCounts.value = result;
+      });
+    };
+    refresh();
 
-    private refresh() {
-        this.dashboardService.getStatusCounts(this.filter).then(result => {
-            this.statusCounts = result;
-        });
-    }
+    const onMonthRangeTap = (months: number) => {
+      const range = getDateRange(months);
+      filter.value = {
+        userId: filter.value.userId,
+        dateEnd: range.dateEnd,
+        dateStart: range.dateStart,
+      };
+      refresh();
+    };
 
-    private onMonthRangeTap(months: number) {
-        const range = this.getDateRange(months);
-        this.filter = {
-            userId: this.filter.userId,
-            dateEnd: range.dateEnd,
-            dateStart: range.dateStart,
-        };
-        this.refresh();
-    }
+    const getDateRange = (months: number): DateRange => {
+      const now = new Date();
+      const start = new Date();
+      start.setMonth(start.getMonth() - months);
+      return {
+        dateStart: start,
+        dateEnd: now,
+      };
+    };
 
-    private getDateRange(months: number): DateRange {
-        const now = new Date();
-        const start = new Date();
-        start.setMonth(start.getMonth() - months);
-        return {
-            dateStart: start,
-            dateEnd: now,
-        };
-    }
-
-    private formatDateEnUs(date: Date) {
-        return formatDateEnUs(date);
-    }
-}
+    return {
+      formatDateEnUs,
+      onMonthRangeTap,
+      refresh,
+      filter,
+      statusCounts,
+      categories,
+      itemsOpenByMonth,
+      itemsClosedByMonth,
+    };
+  }
+});
 </script>

@@ -7,18 +7,18 @@
           placeholder="Enter new task..."
           class="form-control pt-text-task-add"
           name="newTask"
-        >
+        />
       </div>
       <button
         type="button"
         @click="() => onAddTapped()"
         class="btn btn-primary"
         :disabled="!newTaskTitle"
-      >Add</button>
+      >
+        Add
+      </button>
     </div>
-
-    <hr>
-
+    <hr />
     <div v-for="task in tasks" :key="task.id" class="input-group mb-3 col-sm-6">
       <div class="input-group-prepend">
         <div class="input-group-text">
@@ -49,72 +49,80 @@
 </template>
 
 <script lang="ts">
-import { Component, Vue, Prop, Emit, Watch } from 'vue-property-decorator';
-import { EMPTY_STRING } from '@/core/helpers/string-helpers';
-import { PtTask } from '@/core/models/domain';
-import { PtNewTask } from '@/shared/models/dto/pt-new-task';
-import { PtTaskUpdate } from '@/shared/models/dto/pt-task-update';
+import { defineComponent, PropType, ref } from "vue";
+import { EMPTY_STRING } from "@/core/helpers/string-helpers";
+import { PtTask } from "@/core/models/domain";
+import { PtNewTask } from "@/shared/models/dto/pt-new-task";
+import { PtTaskUpdate } from "@/shared/models/dto/pt-task-update";
 
-@Component
-export default class PtItemTasks extends Vue {
-    @Prop() public tasks!: PtTask[];
+export default defineComponent({
+  name: "PtItemTasks",
+  props: {
+    tasks: Array as PropType<PtTask[]>
+  },
+  setup(props, context) {
+    const newTaskTitle = ref(EMPTY_STRING);
+    let lastUpdatedTitle = EMPTY_STRING;
 
-    public newTaskTitle = EMPTY_STRING;
-    private lastUpdatedTitle = EMPTY_STRING;
-    @Emit('addNewTask')
-    public addNewTask(newTask: PtNewTask) {}
-    @Emit('updateTask')
-    public updateTask(taskUpdate: PtTaskUpdate) {}
+    const onAddTapped = () => {
+      const newTitle = newTaskTitle.value.trim();
+      if (newTitle.length === 0) {
+        return;
+      }
+      const newTask: PtNewTask = {
+        title: newTitle,
+        completed: false,
+      };
+      context.emit("addNewTask", newTask);
 
-    public onAddTapped() {
-        const newTitle = this.newTaskTitle.trim();
-        if (newTitle.length === 0) {
-            return;
-        }
-        const newTask: PtNewTask = {
-            title: newTitle,
-            completed: false,
-        };
-        this.addNewTask(newTask);
+      newTaskTitle.value = EMPTY_STRING;
+    };
 
-        this.newTaskTitle = EMPTY_STRING;
-    }
+    const onToggleTapped = (task: PtTask) => {
+      const taskUpdate: PtTaskUpdate = {
+        task,
+        toggle: true,
+      };
+      context.emit("updateTask", taskUpdate);
+    };
 
-    public onToggleTapped(task: PtTask) {
-        const taskUpdate: PtTaskUpdate = {
-            task,
-            toggle: true,
-        };
-        this.updateTask(taskUpdate);
-    }
+    const onTaskTitleChange = (task: PtTask, event: any) => {
+      if (task.title === event.target.value) {
+        return;
+      }
+      lastUpdatedTitle = event.target.value;
+    };
 
-    public onTaskTitleChange(task: PtTask, event: any) {
-        if (task.title === event.target.value) {
-            return;
-        }
-        this.lastUpdatedTitle = event.target.value;
-    }
+    const onTaskBlurred = (task: PtTask) => {
+      if (task.title === lastUpdatedTitle) {
+        return;
+      }
+      const taskUpdate: PtTaskUpdate = {
+        task,
+        toggle: false,
+        newTitle: lastUpdatedTitle,
+      };
+      context.emit("updateTask", taskUpdate);
+      lastUpdatedTitle = EMPTY_STRING;
+    };
 
-    public onTaskBlurred(task: PtTask) {
-        if (task.title === this.lastUpdatedTitle) {
-            return;
-        }
-        const taskUpdate: PtTaskUpdate = {
-            task,
-            toggle: false,
-            newTitle: this.lastUpdatedTitle,
-        };
-        this.updateTask(taskUpdate);
-        this.lastUpdatedTitle = EMPTY_STRING;
-    }
+    const onTaskDelete = (task: PtTask) => {
+      const taskUpdate: PtTaskUpdate = {
+        task,
+        toggle: false,
+        delete: true,
+      };
+      context.emit("updateTask", taskUpdate);
+    };
 
-    public onTaskDelete(task: PtTask) {
-        const taskUpdate: PtTaskUpdate = {
-            task,
-            toggle: false,
-            delete: true,
-        };
-        this.updateTask(taskUpdate);
-    }
-}
+    return {
+      onTaskDelete,
+      onTaskBlurred,
+      onTaskTitleChange,
+      onToggleTapped,
+      onAddTapped,
+      newTaskTitle,
+    };
+  },
+});
 </script>

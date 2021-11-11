@@ -1,5 +1,5 @@
 <template>
-  <div v-if="item !== null">
+  <div v-if="item">
     <div
       class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3"
     >
@@ -51,11 +51,9 @@
   </div>
 </template>
 
-
 <script lang="ts">
-import { Component, Vue, Model, Watch } from 'vue-property-decorator';
-import { Route } from 'vue-router';
-
+import { defineComponent, ref } from "vue";
+import { useRoute, useRouter } from 'vue-router';
 import { Observable } from 'rxjs';
 
 import { BacklogService } from '@/services/backlog-service';
@@ -78,136 +76,138 @@ import { PtNewTask } from '@/shared/models/dto/pt-new-task';
 import { PtTaskUpdate } from '@/shared/models/dto/pt-task-update';
 import { PtNewComment } from '@/shared/models/dto/pt-new-comment';
 
-@Component({
-    components: {
-        PtItemDetails,
-        PtItemTasks,
-        PtItemChitchat,
-    },
-})
-export default class DetailPage extends Vue {
-    public selectedDetailsScreen: DetailScreenType = 'details';
-    private store: Store = new Store();
-    private backlogRepo: BacklogRepository = new BacklogRepository();
-    private backlogService: BacklogService = new BacklogService(
-        this.backlogRepo,
-        this.store
-    );
-    private ptUserService: PtUserService = new PtUserService(this.store);
+export default defineComponent({
+  name: "DetailPage",
+  components: {
+    PtItemDetails,
+    PtItemTasks,
+    PtItemChitchat,
+  },
+  setup() {
+    const router = useRouter();
+    const route = useRoute();
+    const selectedDetailsScreen = ref<DetailScreenType>('details' );
+    let store: Store = new Store();
+    let backlogRepo: BacklogRepository = new BacklogRepository();
+    let backlogService: BacklogService = new BacklogService(backlogRepo, store);
+    let ptUserService: PtUserService = new PtUserService(store);
+    let itemId = 0;
+    const item = ref<PtItem | null>();
+    let currentUser = ref<PtUser | undefined>(store.value.currentUser);
+    let users$ = ref<Observable<PtUser[]>>(store.select<PtUser[]>('users'));
 
-    private itemId: number = 0;
-    private item: PtItem | null = null;
-    private currentUser: PtUser | undefined = this.store.value.currentUser;
-    private users$: Observable<PtUser[]> = this.store.select<PtUser[]>('users');
+    selectedDetailsScreen.value = route.params.screen as DetailScreenType;
+    itemId = Number(route.params.id);
+    const refresh = () => {
+      backlogService.getPtItem(itemId).then((newItem) => {
+        item.value = newItem;
+      });
+    };
+    refresh();
 
-    constructor() {
-        super();
-    }
+    const onScreenSelected = (screen: DetailScreenType) => {
+      selectedDetailsScreen.value = screen;
+      router.push(`/detail/${itemId}/${screen}`);
+    };
 
-    public created() {
-        this.selectedDetailsScreen = this.$route.params
-            .screen as DetailScreenType;
-        this.itemId = Number(this.$route.params.id);
-        this.refresh();
-    }
+    const onItemSaved = (currentItem: PtItem) => {
+      backlogService.updatePtItem(currentItem).then((updateItem: PtItem) => {
+        item.value = updateItem;
+      });
+    };
 
-    public onScreenSelected(screen: DetailScreenType) {
-        this.selectedDetailsScreen = screen;
-        this.$router.push(`/detail/${this.itemId}/${screen}`);
-    }
-
-    public onItemSaved(item: PtItem) {
-        this.backlogService.updatePtItem(item).then((updateItem: PtItem) => {
-            this.item = updateItem;
+    const onAddNewTask = (newTask: PtNewTask) => {
+      if (item.value) {
+        backlogService.addNewPtTask(newTask, item.value).then((nextTask) => {
+          item.value!.tasks = [nextTask].concat(item.value!.tasks);
         });
-    }
+      }
+    };
 
-    public onAddNewTask(newTask: PtNewTask) {
-        if (this.item) {
-            this.backlogService
-                .addNewPtTask(newTask, this.item)
-                .then(nextTask => {
-                    this.item!.tasks = [nextTask].concat(this.item!.tasks);
+    const onUpdateTask = (taskUpdate: PtTaskUpdate) => {
+      if (item.value) {
+        if (taskUpdate.delete) {
+          backlogService
+            .deletePtTask(item.value, taskUpdate.task)
+            .then(ok => {
+              if (ok) {
+                const newTasks = item.value!.tasks.filter((task) => {
+                  if (task.id !== taskUpdate.task.id) {
+                    return task;
+                  }
                 });
+                item.value!.tasks = newTasks;
+              }
+            });
+        } else {
+          backlogService
+            .updatePtTask(
+              item.value,
+              taskUpdate.task,
+              taskUpdate.toggle,
+              taskUpdate.newTitle
+            )
+            .then((updatedTask) => {
+              const newTasks = item.value!.tasks.map((task) => {
+                if (task.id === updatedTask.id) {
+                  return updatedTask;
+                } else {
+                  return task;
+                }
+              });
+              item.value!.tasks = newTasks;
+            });
         }
+      }
+    };
+
+    const onAddNewComment = (newComment: PtNewComment) => {
+      if (item.value) {
+        backlogService
+          .addNewPtComment(newComment, item.value)
+          .then(nextComment => {
+            item.value!.comments = [nextComment].concat(item.value!.comments);
+          });
+      }
+    };
+
+    const onUsersRequested = () => {
+      ptUserService.fetchUsers();
+    };
+
+    const getIndicatorImage = (currentItem: PtItem) => {
+      return ItemType.imageResFromType(currentItem.type);
+    };
+
+    const getPriorityClass = (currentItem: PtItem): string => {
+      const indicatorClass = getIndicatorClass(currentItem.priority);
+      return indicatorClass;
+    };
+
+    const initModalNewItem = (): PtNewItem => {
+      return {
+        title: EMPTY_STRING,
+        description: EMPTY_STRING,
+        typeStr: 'PBI',
+      };
     }
 
-    public onUpdateTask(taskUpdate: PtTaskUpdate) {
-        if (this.item) {
-            if (taskUpdate.delete) {
-                this.backlogService
-                    .deletePtTask(this.item, taskUpdate.task)
-                    .then(ok => {
-                        if (ok) {
-                            const newTasks = this.item!.tasks.filter(task => {
-                                if (task.id !== taskUpdate.task.id) {
-                                    return task;
-                                }
-                            });
-                            this.item!.tasks = newTasks;
-                        }
-                    });
-            } else {
-                this.backlogService
-                    .updatePtTask(
-                        this.item,
-                        taskUpdate.task,
-                        taskUpdate.toggle,
-                        taskUpdate.newTitle
-                    )
-                    .then(updatedTask => {
-                        const newTasks = this.item!.tasks.map(task => {
-                            if (task.id === updatedTask.id) {
-                                return updatedTask;
-                            } else {
-                                return task;
-                            }
-                        });
-                        this.item!.tasks = newTasks;
-                    });
-            }
-        }
-    }
-
-    public onAddNewComment(newComment: PtNewComment) {
-        if (this.item) {
-            this.backlogService
-                .addNewPtComment(newComment, this.item)
-                .then(nextComment => {
-                    this.item!.comments = [nextComment].concat(
-                        this.item!.comments
-                    );
-                });
-        }
-    }
-
-    public onUsersRequested() {
-        this.ptUserService.fetchUsers();
-    }
-
-    public getIndicatorImage(item: PtItem) {
-        return ItemType.imageResFromType(item.type);
-    }
-
-    public getPriorityClass(item: PtItem): string {
-        const indicatorClass = getIndicatorClass(item.priority);
-        return indicatorClass;
-    }
-
-    private refresh() {
-        this.backlogService.getPtItem(this.itemId).then(item => {
-            this.item = item;
-        });
-    }
-
-    private initModalNewItem(): PtNewItem {
-        return {
-            title: EMPTY_STRING,
-            description: EMPTY_STRING,
-            typeStr: 'PBI',
-        };
-    }
-}
+    return {
+      getPriorityClass,
+      getIndicatorImage,
+      onUsersRequested,
+      onAddNewComment,
+      onUpdateTask,
+      onAddNewTask,
+      onScreenSelected,
+      onItemSaved,
+      item,
+      currentUser,
+      users$,
+      selectedDetailsScreen,
+    };
+  },
+});
 </script>
 
 <style scoped>

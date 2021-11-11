@@ -252,8 +252,9 @@
 </template>
 
 <script lang="ts">
-import { Component, Vue } from 'vue-property-decorator';
+import { defineComponent } from "vue";
 
-@Component
-export default class SideMenu extends Vue {}
+export default defineComponent({
+  name: "SideMenu",
+});
 </script>
