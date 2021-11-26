@@ -51,11 +51,8 @@ export default defineComponent({
     comments: Array as PropType<PtComment[]>,
     currentUser: Object as PropType<PtUser>,
   },
-  setup() {
+  setup(props, context) {
     const newCommentText = ref(EMPTY_STRING);
-    const addNewComment = (newComment: PtNewComment) => {
-      console.log("add new comment" + newComment);
-    };
 
     const onAddTapped = () => {
       const newTitle = newCommentText.value.trim();
@@ -65,7 +62,8 @@ export default defineComponent({
       const newComment: PtNewComment = {
         title: newTitle,
       };
-      addNewComment(newComment);
+
+      context.emit("addNewComment", newComment);
 
       newCommentText.value = EMPTY_STRING;
     };
