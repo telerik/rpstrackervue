@@ -14,21 +14,20 @@
 
       <div class="btn-toolbar mb-2 mb-md-0">
         <div class="btn-group mr-2">
-          <button
-            type="button"
-            class="btn btn-sm btn-outline-secondary"
-            @click="(e) => onMonthRangeTap(3)"
-          >3 Months</button>
-          <button
-            type="button"
-            class="btn btn-sm btn-outline-secondary"
-            @click="(e) => onMonthRangeTap(6)"
-          >6 Months</button>
-          <button
-            type="button"
-            class="btn btn-sm btn-outline-secondary"
-            @click="(e) => onMonthRangeTap(12)"
-          >1 Year</button>
+          <kendo-buttongroup>
+            <kendo-button
+              icon="calendar"
+              @click="(e) => onMonthRangeTap(3)"
+            >3 Months</kendo-button>
+            <kendo-button
+              icon="calendar"
+              @click="(e) => onMonthRangeTap(6)"
+            >6 Months</kendo-button>
+            <kendo-button
+              icon="calendar"
+              @click="(e) => onMonthRangeTap(12)"
+            >1 Year</kendo-button>
+          </kendo-buttongroup>
         </div>
       </div>
     </div>
@@ -63,6 +62,8 @@ import {
 import { formatDateEnUs } from "@/core/helpers/date-utils";
 import ActiveIssues from "@/components/dashboard/ActiveIssues.vue";
 
+import { Button, ButtonGroup } from '@progress/kendo-vue-buttons';
+
 interface DateRange {
   dateStart: Date;
   dateEnd: Date;
@@ -74,6 +75,8 @@ export default defineComponent({
   name: "DashboardPage",
   components: {
     ActiveIssues,
+    'kendo-button': Button,
+    'kendo-buttongroup': ButtonGroup
   },
   setup() {
     const filter = ref<DashboardFilter>({});

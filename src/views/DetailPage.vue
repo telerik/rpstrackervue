@@ -4,50 +4,38 @@
       class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3"
     >
       <h1 class="h2">{{ item.title }}</h1>
-      <div class="btn-toolbar mb-2 mb-md-0">
-        <div class="btn-group mr-2">
-          <button
-            type="button"
-            @click="onScreenSelected('details')"
-            class="btn btn-sm btn-outline-secondary"
-          >Details</button>
-          
-          <button
-            type="button"
-            @click="onScreenSelected('tasks')"
-            class="btn btn-sm btn-outline-secondary"
-          >Tasks</button>
-          
-          <button
-            type="button"
-            @click="onScreenSelected('chitchat')"
-            class="btn btn-sm btn-outline-secondary"
-          >Chitchat</button>
-        </div>
-      </div>
     </div>
 
-    <PtItemDetails
-      v-if="selectedDetailsScreen === 'details'"
-      :item="item"
-      :usersObs="users$"
-      @usersRequested="onUsersRequested"
-      @itemSaved="onItemSaved"
-    />
+    <kendo-tabstrip :selected="selectedDetailsTabIndex" @select="onTabSelect">
+      <tabstripTab :title="'Details'">
+            <PtItemDetails
+              :item="item"
+              :usersObs="users$"
+              @usersRequested="onUsersRequested"
+              @itemSaved="onItemSaved"
+            />
+      </tabstripTab>
+      <tabstripTab :title="'Tasks'">
+            <PtItemTasks
+              :tasks="item.tasks"
+              @addNewTask="onAddNewTask"
+              @updateTask="onUpdateTask"
+            />
+      </tabstripTab>
+      <tabstripTab :title="'Chitchat'">
+            <PtItemChitchat
+              :comments="item.comments"
+              :currentUser="currentUser"
+              @addNewComment="onAddNewComment"
+            />
+      </tabstripTab>
+    </kendo-tabstrip>
 
-    <PtItemTasks
-      v-else-if="selectedDetailsScreen === 'tasks'"
-      :tasks="item.tasks"
-      @addNewTask="onAddNewTask"
-      @updateTask="onUpdateTask"
-    />
 
-    <PtItemChitchat
-      v-else-if="selectedDetailsScreen === 'chitchat'"
-      :comments="item.comments"
-      :currentUser="currentUser"
-      @addNewComment="onAddNewComment"
-    />
+
+
+
+
   </div>
 </template>
 
@@ -75,18 +63,22 @@ import { DetailScreenType } from '@/shared/models/ui/types/detail-screens';
 import { PtNewTask } from '@/shared/models/dto/pt-new-task';
 import { PtTaskUpdate } from '@/shared/models/dto/pt-task-update';
 import { PtNewComment } from '@/shared/models/dto/pt-new-comment';
+import { TabStrip, TabStripTab, TabStripSelectEventArguments } from '@progress/kendo-vue-layout';
+
 
 export default defineComponent({
   name: "DetailPage",
   components: {
+    'kendo-tabstrip': TabStrip,
+    'tabstripTab': TabStripTab,
     PtItemDetails,
     PtItemTasks,
-    PtItemChitchat,
+    PtItemChitchat
   },
   setup() {
     const router = useRouter();
     const route = useRoute();
-    const selectedDetailsScreen = ref<DetailScreenType>('details' );
+    
     let store: Store = new Store();
     let backlogRepo: BacklogRepository = new BacklogRepository();
     let backlogService: BacklogService = new BacklogService(backlogRepo, store);
@@ -95,8 +87,13 @@ export default defineComponent({
     const item = ref<PtItem | null>();
     let currentUser = ref<PtUser | undefined>(store.value.currentUser);
     let users$ = ref<Observable<PtUser[]>>(store.select<PtUser[]>('users'));
-
+    
+    const allDetailsScreens: DetailScreenType[]  = ['details', 'tasks', 'chitchat'];
+    const selectedDetailsScreen = ref<DetailScreenType>('details'); //default
+    const selectedDetailsTabIndex = ref(0); //default
     selectedDetailsScreen.value = route.params.screen as DetailScreenType;
+    selectedDetailsTabIndex.value = allDetailsScreens.findIndex(v => v === route.params.screen);
+
     itemId = Number(route.params.id);
     const refresh = () => {
       backlogService.getPtItem(itemId).then((newItem) => {
@@ -109,6 +106,14 @@ export default defineComponent({
       selectedDetailsScreen.value = screen;
       router.push(`/detail/${itemId}/${screen}`);
     };
+
+    const onTabSelect = (e: TabStripSelectEventArguments) => {
+      const tabIndex = e.selected;
+      selectedDetailsTabIndex.value = tabIndex;
+
+      const screenFromIndex = allDetailsScreens[tabIndex];
+      router.push(`/detail/${itemId}/${screenFromIndex}`);
+    }
 
     const onItemSaved = (currentItem: PtItem) => {
       backlogService.updatePtItem(currentItem).then((updateItem: PtItem) => {
@@ -201,10 +206,12 @@ export default defineComponent({
       onAddNewTask,
       onScreenSelected,
       onItemSaved,
+      onTabSelect,
       item,
       currentUser,
       users$,
       selectedDetailsScreen,
+      selectedDetailsTabIndex,
     };
   },
 });
