@@ -14,6 +14,24 @@
 
       <div class="btn-toolbar mb-2 mb-md-0">
         <div class="btn-group mr-2">
+
+          <kendo-combobox
+            :data-items="users"
+            :text-field="'fullName'"
+            :placeholder="'Select assignee...'"
+            :item-render="'userFilterItemTemplate'"
+            @open="userFilterOpen"
+            @change="userFilterValueChange"
+            style="width: 250px;"
+          >
+            <template v-slot:userFilterItemTemplate="{props}">
+              <div class="row k-item" style="margin-left: 5px;" @click="(e) => props.onClick(e)">
+                <img class="li-avatar rounded" :src="props.dataItem.avatar" />
+                <span style="margin-left: 5px;">{{ props.dataItem.fullName }}</span>
+              </div>
+            </template>
+          </kendo-combobox>
+          
           <kendo-buttongroup>
             <kendo-button
               icon="calendar"
@@ -40,6 +58,32 @@
         <div class="row">
           <div class="col-sm-12">
             <h3>All issues</h3>
+
+
+              <kendo-chart>
+                <ChartTitle :text="'All Issues'" :position="'top'" :align="'center'" />
+
+                <ChartCategoryAxis>
+                  <ChartCategoryAxisItem
+                    :categories="categories" :majorGridLines="false" :baseUnit="'months'" />
+                </ChartCategoryAxis>
+
+                <ChartLegend :position="'bottom'" />
+                <ChartSeriesDefaults :type="'column'" :stack="true" :gap="0.06" />
+                <ChartSeries>
+                  <ChartSeriesItem
+                    :name="'Open'"
+                    :color="'#CC3458'"
+                    :opacity="0.7"
+                    :data-items="itemsOpenByMonth" />
+                  <ChartSeriesItem
+                    :name="'Closed'"
+                    :color="'#35C473'"
+                    :opacity="0.7"
+                    :data-items="itemsClosedByMonth" />
+                </ChartSeries>
+              </kendo-chart>
+
           </div>
         </div>
       </div>
@@ -63,6 +107,18 @@ import { formatDateEnUs } from "@/core/helpers/date-utils";
 import ActiveIssues from "@/components/dashboard/ActiveIssues.vue";
 
 import { Button, ButtonGroup } from '@progress/kendo-vue-buttons';
+import { ComboBox, ComboBoxChangeEvent } from '@progress/kendo-vue-dropdowns';
+import { 
+  Chart, 
+  ChartSeries, 
+  ChartSeriesItem, 
+  ChartTitle,
+  ChartCategoryAxis,
+  ChartCategoryAxisItem,
+  ChartSeriesDefaults,
+  ChartLegend
+   } from '@progress/kendo-vue-charts';
+
 
 interface DateRange {
   dateStart: Date;
@@ -70,13 +126,26 @@ interface DateRange {
 }
 
 import { defineComponent, ref } from "vue";
+import { PtUser } from "@/core/models/domain";
+import { PtUserService } from "@/core/services/pt-user-service";
+import { Store } from "@/core/state/app-store";
+import { Observable } from "rxjs";
 
 export default defineComponent({
   name: "DashboardPage",
   components: {
     ActiveIssues,
     'kendo-button': Button,
-    'kendo-buttongroup': ButtonGroup
+    'kendo-buttongroup': ButtonGroup,
+    'kendo-combobox': ComboBox,
+    'kendo-chart': Chart,
+    ChartSeries, 
+    ChartSeriesItem,
+    ChartTitle,
+    ChartCategoryAxis,
+    ChartCategoryAxisItem,
+    ChartSeriesDefaults,
+    ChartLegend
   },
   setup() {
     const filter = ref<DashboardFilter>({});
@@ -86,6 +155,8 @@ export default defineComponent({
       closedItemsCount: 0,
       openItemsCount: 0,
     });
+
+    // chart properties
     const categories = ref<Date[]>([]);
     const itemsOpenByMonth = ref<number[]>([]);
     const itemsClosedByMonth = ref<number[]>([]);
@@ -95,11 +166,59 @@ export default defineComponent({
       dashboardRepo
     );
 
+    const store: Store = new Store();
+    const userService: PtUserService = new PtUserService(store);
+    const users = ref<PtUser[]>([]);
+    const users$: Observable<PtUser[]> = store.select<PtUser[]>('users');
+
+    users$.subscribe((newUsers: PtUser[]) => {
+      users.value = newUsers;
+    });
+
     const refresh = () => {
-      dashboardService.getStatusCounts(filter.value as DashboardFilter).then((result) => {
-        statusCounts.value = result;
+
+      Promise.all<StatusCounts, FilteredIssues>([
+        dashboardService.getStatusCounts(filter.value as DashboardFilter),
+        dashboardService.getFilteredIssues(filter.value as DashboardFilter)
+      ]).then((results) => {
+        statusCounts.value = results[0];
+        updateStats(results[1]);
       });
     };
+
+    const updateStats = (issuesAll: FilteredIssues) => {
+      const cats = issuesAll.categories.map(c=> new Date(c));
+
+      const open: number[] = [];
+      const closed: number[] = [];
+
+      issuesAll.items.forEach((item) => {
+        open.push(item.open.length);
+        closed.push(item.closed.length);
+      });
+
+      categories.value = cats;
+      itemsOpenByMonth.value = open;
+      itemsClosedByMonth.value = closed;
+    };
+
+
+    const userFilterOpen = () => {
+      userService.fetchUsers();
+    }
+
+    const userFilterValueChange = (e: ComboBoxChangeEvent) => {
+      const selectedUser: PtUser = e.value as PtUser;
+
+      if (selectedUser) {
+        filter.value.userId = selectedUser.id;
+      } else {
+        filter.value.userId = undefined;
+      }
+
+      refresh();
+    }
+
     refresh();
 
     const onMonthRangeTap = (months: number) => {
@@ -131,6 +250,9 @@ export default defineComponent({
       categories,
       itemsOpenByMonth,
       itemsClosedByMonth,
+      users,
+      userFilterOpen,
+      userFilterValueChange,
     };
   }
 });
