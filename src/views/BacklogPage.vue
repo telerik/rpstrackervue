@@ -13,48 +13,55 @@
       </div>
     </div>
 
-    <div class="table-responsive">
-      <table class="table table-striped table-sm table-hover">
-        <thead>
-          <tr>
-            <th></th>
-            <th>Assignee</th>
-            <th>Title</th>
-            <th>Status</th>
-            <th>Priority</th>
-            <th>Estimate</th>
-            <th>Created</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-bind:key="i.id" v-for="i in items" class="pt-table-row" @click="listItemTap(i)">
-            <td>
-              <img :src="getIndicatorImage(i)" class="backlog-icon">
-            </td>
-            <td>
-              <img :src="i.assignee.avatar" class="li-avatar rounded mx-auto d-block">
-            </td>
-            <td>
-              <span class="li-title">{{i.title}}</span>
-            </td>
+    <kendo-grid
+      :data-items="gridData"
+      :columns="columns"
+      @rowclick="onSelectionChange"
+      :pageable="true"
+      :skip="skip"
+      :take="take"
+      :total="total"
+      @pagechange="onPageChange"
+      :sortable="true"
+      :sort="sort"
+      @sortchange="onSortChange"
+      style="height: 400px;"
+    >
+      <template v-slot:typeCell="{props}">
+        <td :class="props.className">
+          <img :src="getIndicatorImage(props.dataItem)" class="backlog-icon">
+        </td>
+      </template>
 
-            <td>
-              <span>{{i.status}}</span>
-            </td>
+      <template v-slot:assigneeCell="{props}">
+        <td :class="props.className">
+          <div>
+            <img :src="props.dataItem.assignee.avatar" class="li-avatar rounded mx-auto">
+            <span style="margin-left: 10px;">{{props.dataItem.assignee.fullName}}</span>
+          </div>
+        </td>
+      </template>
 
-            <td>
-              <span :class="'badge ' + getPriorityClass(i)">{{i.priority}}</span>
-            </td>
-            <td>
-              <span class="li-estimate">{{i.estimate}}</span>
-            </td>
-            <td>
-              <span class="li-date">{{i.dateCreated.toDateString()}}</span>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
+      <template v-slot:priorityCell="{props}">
+        <td :class="props.className">
+          <span :class="'badge ' + getPriorityClass(props.dataItem)">{{props.dataItem.priority}}</span>
+        </td>
+      </template>
+
+      <template v-slot:estimateCell="{props}">
+        <td :class="props.className">
+          <span class="li-estimate">{{props.dataItem.estimate}}</span>
+        </td>
+      </template>
+
+      <template v-slot:dateCreatedCell="{props}">
+        <td :class="props.className">
+          <span class="li-date">{{props.dataItem.dateCreated.toDateString()}}</span>
+        </td>
+      </template>
+
+    </kendo-grid>
+
 
     <transition v-if="showAddModal">
       <div class="modal-mask">
@@ -106,7 +113,7 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, ref, watch } from "vue";
+import { computed, defineComponent, ref, watch } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { BacklogService } from "@/services/backlog-service";
 import { BacklogRepository } from "@/repositories/backlog-repository";
@@ -120,10 +127,14 @@ import { PtNewItem } from "@/shared/models/dto/pt-new-item";
 import PresetFilter from "@/components/PresetFilter.vue";
 import { getIndicatorClass } from "@/shared/helpers/priority-styling";
 
+import {Grid, GridColumnProps, GridPageChangeEvent, GridSelectionChangeEvent, GridSortChangeEvent} from '@progress/kendo-vue-grid';
+import { orderBy, SortDescriptor } from '@progress/kendo-data-query';
+
 export default defineComponent({
   name: "BacklogPage",
   components: {
     PresetFilter,
+    'kendo-grid': Grid
   },
   setup() {
     const router = useRouter();
@@ -136,6 +147,31 @@ export default defineComponent({
       // navigate to detail page
       router.push(`/detail/${item.id}/details`);
     };
+
+    const columns = ref<GridColumnProps[]>([
+      { field: 'type', title: ' ', width: 44, cell: 'typeCell' },
+      { field: 'assignee', title: 'Assignee', width: 260, cell: 'assigneeCell' },
+      { field: 'title', title: 'Title' },
+      { field: 'priority', title: 'Priority', width: 100, cell: 'priorityCell' },
+      { field: 'estimate', title: 'Estimate', width: 100, cell: 'estimateCell' },
+      { field: 'dateCreated', title: 'Created', width: 160, cell: 'dateCreatedCell' },
+    ]);
+
+    const skip = ref(0);
+    const take = ref(10);
+    const sort = ref<SortDescriptor[]>([{ field: 'title', dir: 'desc' }]);
+
+    const total = computed(() => {
+      return items.value ? items.value.length : 0;
+    });
+
+    const gridData = computed(() => {
+      return items.value 
+        ? orderBy(
+        items.value.slice(skip.value, take.value + skip.value),
+        sort.value)
+        : [];
+    });
 
     const getIndicatorImage = (item: PtItem) => {
       return ItemType.imageResFromType(item.type);
@@ -173,6 +209,20 @@ export default defineComponent({
       showAddModal.value = !showAddModal.value;
     };
 
+    const onPageChange = (event: GridPageChangeEvent) => {
+      skip.value = event.page.skip;
+      take.value = event.page.take;
+    }
+
+    const onSortChange = (event: GridSortChangeEvent) => {
+      sort.value = event.sort;
+    };
+
+    const onSelectionChange = (event: GridSelectionChangeEvent) => {
+      const selItem = event.dataItem as PtItem;
+      router.push(`/detail/${selItem.id}/details`);
+    };
+
     const initModalNewItem = (): PtNewItem => {
       return {
         title: EMPTY_STRING,
@@ -205,6 +255,15 @@ export default defineComponent({
       refresh,
       items,
       showAddModal,
+      columns,
+      skip,
+      take,
+      total,
+      onPageChange,
+      gridData,
+      sort,
+      onSortChange,
+      onSelectionChange
     };
   },
 });
