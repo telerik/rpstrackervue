@@ -11,6 +11,7 @@
     "@progress/kendo-data-query": "^1.5.5",
     "@progress/kendo-drawing": "^1.16.0",
     "@progress/kendo-licensing": "^1.2.1",
+    "@progress/kendo-theme-bootstrap": "^4.43.0",
     "@progress/kendo-theme-default": "^4.43.0",
     "@progress/kendo-vue-animation": "^2.7.1",
     "@progress/kendo-vue-buttons": "^2.7.0",

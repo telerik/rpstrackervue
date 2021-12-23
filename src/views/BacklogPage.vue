@@ -8,7 +8,7 @@
         <PresetFilter :selectedPreset="currentPreset" @onPresetSelected="onSelectPresetTap"/>
 
         <div class="btn-group mr-2">
-          <button type="button" @click="toggleModal" class="btn btn-sm btn-outline-secondary">Add</button>
+          <kendo-button :icon="'plus-circle'" @click="toggleModal">Add</kendo-button>
         </div>
       </div>
     </div>
@@ -129,12 +129,14 @@ import { getIndicatorClass } from "@/shared/helpers/priority-styling";
 
 import {Grid, GridColumnProps, GridPageChangeEvent, GridSelectionChangeEvent, GridSortChangeEvent} from '@progress/kendo-vue-grid';
 import { orderBy, SortDescriptor } from '@progress/kendo-data-query';
+import { Button } from '@progress/kendo-vue-buttons';
 
 export default defineComponent({
   name: "BacklogPage",
   components: {
     PresetFilter,
-    'kendo-grid': Grid
+    'kendo-grid': Grid,
+    'kendo-button': Button
   },
   setup() {
     const router = useRouter();
